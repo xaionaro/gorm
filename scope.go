@@ -407,6 +407,10 @@ func (scope *Scope) changeableDBColumn(column string) bool {
 }
 
 func (scope *Scope) changeableField(field *Field) bool {
+	if (field == nil) {
+		return false;	// TODO: find out why "relation" can be null (it's connected with structs with interface{}-es)
+	}
+
 	selectAttrs := scope.SelectAttrs()
 	omitAttrs := scope.OmitAttrs()
 

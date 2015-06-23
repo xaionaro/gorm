@@ -35,7 +35,7 @@ func Create(scope *Scope) {
 						}
 					}
 				} else if relationship := field.Relationship; relationship != nil && relationship.Kind == "belongs_to" {
-					if relationField := fields[relationship.ForeignDBName]; !scope.changeableField(relationField) {
+					if relationField := fields[relationship.ForeignDBName]; (relationField != nil) && !scope.changeableField(relationField) { // TODO: find out why "relation" can be null (it's connected with structs with interface{}-es)
 						columns = append(columns, scope.Quote(relationField.DBName))
 						sqls = append(sqls, scope.AddToVars(relationField.Field.Interface()))
 					}
