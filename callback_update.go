@@ -56,8 +56,10 @@ func Update(scope *Scope) {
 					}
 				} else if relationship := field.Relationship; relationship != nil && relationship.Kind == "belongs_to" {
 					if relationField := fields[relationship.ForeignDBName]; !scope.changeableField(relationField) {
-						if !relationField.IsBlank {
-							sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(relationField.DBName), scope.AddToVars(relationField.Field.Interface())))
+						if relationField != nil {
+							if !relationField.IsBlank {
+								sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(relationField.DBName), scope.AddToVars(relationField.Field.Interface())))
+							}
 						}
 					}
 				}
