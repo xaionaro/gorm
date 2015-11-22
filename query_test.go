@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/now"
 
 	"testing"
@@ -63,6 +64,22 @@ func TestUIntPrimaryKey(t *testing.T) {
 	}
 }
 
+func TestStringPrimaryKeyForNumericValueStartingWithZero(t *testing.T) {
+	type AddressByZipCode struct {
+		ZipCode   string `gorm:"primary_key"`
+		Address   string
+	}
+
+	DB.AutoMigrate(&AddressByZipCode{})
+	DB.Create(&AddressByZipCode{ZipCode: "00501", Address: "Holtsville"})
+
+	var address AddressByZipCode
+	DB.First(&address, "00501")
+	if address.ZipCode != "00501" {
+		t.Errorf("Fetch a record from with a string primary key for a numeric value starting with zero should work, but failed")
+	}
+}
+
 func TestFindAsSliceOfPointers(t *testing.T) {
 	DB.Save(&User{Name: "user"})
 
@@ -98,49 +115,41 @@ func TestSearchWithPlainSQL(t *testing.T) {
 		t.Errorf("Should found 2 users that age > 1, but got %v", len(users))
 	}
 
-	users = []User{}
 	DB.Where("name LIKE ?", "%PlainSqlUser%").Where("age >= ?", 1).Find(&users)
 	if len(users) != 3 {
 		t.Errorf("Should found 3 users that age >= 1, but got %v", len(users))
 	}
 
-	users = []User{}
 	scopedb.Where("age <> ?", 20).Find(&users)
 	if len(users) != 2 {
 		t.Errorf("Should found 2 users age != 20, but got %v", len(users))
 	}
 
-	users = []User{}
 	scopedb.Where("birthday > ?", now.MustParse("2000-1-1")).Find(&users)
 	if len(users) != 2 {
 		t.Errorf("Should found 2 users's birthday > 2000-1-1, but got %v", len(users))
 	}
 
-	users = []User{}
 	scopedb.Where("birthday > ?", "2002-10-10").Find(&users)
 	if len(users) != 2 {
 		t.Errorf("Should found 2 users's birthday >= 2002-10-10, but got %v", len(users))
 	}
 
-	users = []User{}
 	scopedb.Where("birthday >= ?", "2010-1-1").Where("birthday < ?", "2020-1-1").Find(&users)
 	if len(users) != 1 {
 		t.Errorf("Should found 1 users's birthday < 2020-1-1 and >= 2010-1-1, but got %v", len(users))
 	}
 
-	users = []User{}
 	DB.Where("name in (?)", []string{user1.Name, user2.Name}).Find(&users)
 	if len(users) != 2 {
 		t.Errorf("Should found 2 users, but got %v", len(users))
 	}
 
-	users = []User{}
 	DB.Where("id in (?)", []int64{user1.Id, user2.Id, user3.Id}).Find(&users)
 	if len(users) != 3 {
 		t.Errorf("Should found 3 users, but got %v", len(users))
 	}
 
-	users = []User{}
 	DB.Where("id in (?)", user1.Id).Find(&users)
 	if len(users) != 1 {
 		t.Errorf("Should found 1 users, but got %v", len(users))
@@ -191,7 +200,6 @@ func TestSearchWithStruct(t *testing.T) {
 		t.Errorf("Search first record with where struct")
 	}
 
-	users = []User{}
 	DB.Find(&users, &User{Name: user2.Name})
 	if len(users) != 1 {
 		t.Errorf("Search all records with inline struct")
@@ -222,7 +230,6 @@ func TestSearchWithMap(t *testing.T) {
 		t.Errorf("Search all records with inline map")
 	}
 
-	users = []User{}
 	DB.Find(&users, map[string]interface{}{"name": user3.Name})
 	if len(users) != 1 {
 		t.Errorf("Search all records with inline map")
@@ -395,13 +402,11 @@ func TestNot(t *testing.T) {
 		t.Errorf("Should find all users's name not equal 3")
 	}
 
-	users4 = []User{}
 	DB.Not("name = ?", "user3").Find(&users4)
 	if len(users1)-len(users4) != int(name3Count) {
 		t.Errorf("Should find all users's name not equal 3")
 	}
 
-	users4 = []User{}
 	DB.Not("name <> ?", "user3").Find(&users4)
 	if len(users4) != int(name3Count) {
 		t.Errorf("Should find all users's name not equal 3")
@@ -568,7 +573,7 @@ func TestSelectWithEscapedFieldName(t *testing.T) {
 func TestSelectWithVariables(t *testing.T) {
 	DB.Save(&User{Name: "jinzhu"})
 
-	rows, _ := DB.Table("users").Select("? as fake", "name").Rows()
+	rows, _ := DB.Table("users").Select("? as fake", gorm.Expr("name")).Rows()
 
 	if !rows.Next() {
 		t.Errorf("Should have returned at least one row")
@@ -589,4 +594,15 @@ func TestSelectWithArrayInput(t *testing.T) {
 	if user.Name != "jinzhu" || user.Age != 42 {
 		t.Errorf("Should have selected both age and name")
 	}
+}
+
+func TestCurrentDatabase(t *testing.T) {
+	databaseName := DB.CurrentDatabase()
+	if err := DB.Error; err != nil {
+		t.Errorf("Problem getting current db name: %s", err)
+	}
+	if databaseName == "" {
+		t.Errorf("Current db name returned empty; this should never happen!")
+	}
+	t.Logf("Got current db name: %v", databaseName)
 }

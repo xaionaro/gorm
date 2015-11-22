@@ -26,39 +26,56 @@ var (
 
 func init() {
 	var err error
+
+	if DB, err = OpenTestConnection(); err != nil {
+		panic(fmt.Sprintf("No error should happen when connecting to test database, but got err=%+v", err))
+	}
+
+	// DB.SetLogger(Logger{log.New(os.Stdout, "\r\n", 0)})
+	// DB.SetLogger(log.New(os.Stdout, "\r\n", 0))
+	// DB.LogMode(true)
+	DB.LogMode(false)
+
+	DB.DB().SetMaxIdleConns(10)
+
+	runMigration()
+}
+
+func OpenTestConnection() (db gorm.DB, err error) {
 	switch os.Getenv("GORM_DIALECT") {
 	case "mysql":
 		// CREATE USER 'gorm'@'localhost' IDENTIFIED BY 'gorm';
 		// CREATE DATABASE gorm;
 		// GRANT ALL ON gorm.* TO 'gorm'@'localhost';
 		fmt.Println("testing mysql...")
-		DB, err = gorm.Open("mysql", "gorm:gorm@/gorm?charset=utf8&parseTime=True")
+		db, err = gorm.Open("mysql", "gorm:gorm@/gorm?charset=utf8&parseTime=True")
 	case "postgres":
 		fmt.Println("testing postgres...")
-		DB, err = gorm.Open("postgres", "user=gorm DB.name=gorm sslmode=disable")
+		db, err = gorm.Open("postgres", "user=gorm DB.name=gorm sslmode=disable")
 	case "foundation":
 		fmt.Println("testing foundation...")
-		DB, err = gorm.Open("foundation", "dbname=gorm port=15432 sslmode=disable")
+		db, err = gorm.Open("foundation", "dbname=gorm port=15432 sslmode=disable")
 	case "mssql":
 		fmt.Println("testing mssql...")
-		DB, err = gorm.Open("mssql", "server=SERVER_HERE;database=rogue;user id=USER_HERE;password=PW_HERE;port=1433")
+		db, err = gorm.Open("mssql", "server=SERVER_HERE;database=rogue;user id=USER_HERE;password=PW_HERE;port=1433")
 	default:
 		fmt.Println("testing sqlite3...")
-		DB, err = gorm.Open("sqlite3", "/tmp/gorm.db")
+		db, err = gorm.Open("sqlite3", "/tmp/gorm.db")
 	}
+	return
+}
 
-	// DB.SetLogger(Logger{log.New(os.Stdout, "\r\n", 0)})
-	// DB.SetLogger(log.New(os.Stdout, "\r\n", 0))
-	DB.LogMode(true)
-	DB.LogMode(false)
-
-	if err != nil {
-		panic(fmt.Sprintf("No error should happen when connect database, but got %+v", err))
+func TestStringPrimaryKey(t *testing.T) {
+	type UUIDStruct struct {
+		ID   string `gorm:"primary_key"`
+		Name string
 	}
+	DB.AutoMigrate(&UUIDStruct{})
 
-	DB.DB().SetMaxIdleConns(10)
-
-	runMigration()
+	data := UUIDStruct{ID: "uuid", Name: "hello"}
+	if err := DB.Save(&data).Error; err != nil || data.ID != "uuid" {
+		t.Errorf("string primary key should not be populated")
+	}
 }
 
 func TestExceptionsWithInvalidSql(t *testing.T) {
@@ -408,21 +425,35 @@ func TestGroup(t *testing.T) {
 }
 
 func TestJoins(t *testing.T) {
+	var user = User{
+		Name:   "joins",
+		Emails: []Email{{Email: "join1@example.com"}, {Email: "join2@example.com"}},
+	}
+	DB.Save(&user)
+
+	var result User
+	DB.Joins("left join emails on emails.user_id = users.id").Where("name = ?", "joins").First(&result)
+	if result.Name != "joins" || result.Id != user.Id {
+		t.Errorf("Should find all two emails with Join")
+	}
+}
+
+func TestJoinsWithSelect(t *testing.T) {
 	type result struct {
 		Name  string
 		Email string
 	}
 
 	user := User{
-		Name:   "joins",
+		Name:   "joins_with_select",
 		Emails: []Email{{Email: "join1@example.com"}, {Email: "join2@example.com"}},
 	}
 	DB.Save(&user)
 
 	var results []result
-	DB.Table("users").Select("name, email").Joins("left join emails on emails.user_id = users.id").Where("name = ?", "joins").Scan(&results)
+	DB.Table("users").Select("name, email").Joins("left join emails on emails.user_id = users.id").Where("name = ?", "joins_with_select").Scan(&results)
 	if len(results) != 2 || results[0].Email != "join1@example.com" || results[1].Email != "join2@example.com" {
-		t.Errorf("Should find all two emails with Join")
+		t.Errorf("Should find all two emails with Join select")
 	}
 }
 
