@@ -15,11 +15,9 @@ func init() {
 		commonInitialismsForReplacer = append(commonInitialismsForReplacer, initialism, strings.Title(strings.ToLower(initialism)))
 	}
 	commonInitialismsReplacer = strings.NewReplacer(commonInitialismsForReplacer...)
-
-	smap = make(map[string]string)
 }
 
-var smap map[string]string
+var smap = make(map[string]string)
 
 func ToDBName(name string) string {
 	if v, ok := smap[name]; ok {
