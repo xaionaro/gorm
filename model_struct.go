@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"runtime/debug"
 	"database/sql"
 	"fmt"
 	"go/ast"
@@ -9,8 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 )
 
+var modelStructs_cacheMutex  = &sync.Mutex{}
 var modelStructs_byScopeType = map[reflect.Type]*ModelStruct{}
 var modelStructs_byTableName = map[string      ]*ModelStruct{}
 var modelStruct_last *ModelStruct
@@ -91,8 +94,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 		scopeType = scopeType.Elem()
 	}
 
-	if value, ok := modelStructs_byScopeType[scopeType]; ok {
-		return value
+	{
+		modelStructs_cacheMutex.Lock();
+		value, ok := modelStructs_byScopeType[scopeType]
+		modelStructs_cacheMutex.Unlock();
+		if ok {
+			return value
+		}
 	}
 
 	modelStruct.ModelType = scopeType
@@ -112,8 +120,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 					value = value.Index(0)
 				}
 				value  = reflect.ValueOf(value.Field(i).Interface())
-				if (! value.IsValid()) {
-					// Invalid interfaces, using Model()'s result
+				if (! value.IsValid()) { // Invalid interfaces, using Model()'s result
+					if (modelStruct_last == nil) { // It's nil? That's bad
+						fmt.Printf("modelStruct_last == nil\n");
+						debug.PrintStack();
+						panic(nil);
+						return &ModelStruct{};
+					}
 					return modelStruct_last
 				}
 				tableName = tableName + "__" + value.Elem().Type().Name()
@@ -146,9 +159,14 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 		}
 	}
 
-	if value, ok := modelStructs_byTableName[tableName]; ok {
-		modelStruct_last = value
-		return value
+	{
+		modelStructs_cacheMutex.Lock();
+		value, ok := modelStructs_byTableName[tableName]
+		modelStructs_cacheMutex.Unlock();
+		if ok {
+			modelStruct_last = value
+			return value
+		}
 	}
 
 	// Get all fields
@@ -366,9 +384,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 	}()
 
 	if (cachable_byScopeType) {
+		modelStructs_cacheMutex.Lock();
 		modelStructs_byScopeType[scopeType] = &modelStruct
+		modelStructs_cacheMutex.Unlock();
 	} else {
+		modelStructs_cacheMutex.Lock();
 		modelStructs_byTableName[tableName] = &modelStruct
+		modelStructs_cacheMutex.Unlock();
 	}
 	return &modelStruct
 }

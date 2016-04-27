@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"sync"
 	"bytes"
 	"strings"
 )
@@ -17,9 +18,12 @@ func init() {
 	commonInitialismsReplacer = strings.NewReplacer(commonInitialismsForReplacer...)
 }
 
-var smap = make(map[string]string)
+var smap      =  make(map[string]string)
+var smapMutex = &sync.Mutex{}
 
 func ToDBName(name string) string {
+	defer smapMutex.Unlock()
+	smapMutex.Lock()
 	if v, ok := smap[name]; ok {
 		return v
 	}
