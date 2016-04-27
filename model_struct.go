@@ -105,7 +105,9 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 
 	modelStruct.ModelType = scopeType
 	if scopeType.Kind() != reflect.Struct {
+		modelStructs_cacheMutex.Lock()
 		modelStruct_last = &modelStruct
+		modelStructs_cacheMutex.Unlock()
 		return &modelStruct
 	}
 
@@ -121,6 +123,8 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 				}
 				value  = reflect.ValueOf(value.Field(i).Interface())
 				if (! value.IsValid()) { // Invalid interfaces, using Model()'s result
+					modelStructs_cacheMutex.Lock()
+					defer func() {modelStructs_cacheMutex.Unlock()}()
 					if (modelStruct_last == nil) { // It's nil? That's bad
 						fmt.Printf("modelStruct_last == nil\n");
 						debug.PrintStack();
@@ -164,7 +168,15 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 		value, ok := modelStructs_byTableName[tableName]
 		modelStructs_cacheMutex.Unlock();
 		if ok {
+			modelStructs_cacheMutex.Lock();
+			defer func() {modelStructs_cacheMutex.Unlock()}();
 			modelStruct_last = value
+			if (value == nil) { // It's nil? That's bad
+				fmt.Printf("value == nil\n")
+				debug.PrintStack()
+				panic(nil)
+				return &ModelStruct{}
+			}
 			return value
 		}
 	}
@@ -380,17 +392,19 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 			}
 			modelStruct.StructFields = append(modelStruct.StructFields, field)
 		}
+		modelStructs_cacheMutex.Lock()
 		modelStruct_last = &modelStruct
+		modelStructs_cacheMutex.Unlock()
 	}()
 
 	if (cachable_byScopeType) {
-		modelStructs_cacheMutex.Lock();
+		modelStructs_cacheMutex.Lock()
 		modelStructs_byScopeType[scopeType] = &modelStruct
-		modelStructs_cacheMutex.Unlock();
+		modelStructs_cacheMutex.Unlock()
 	} else {
-		modelStructs_cacheMutex.Lock();
+		modelStructs_cacheMutex.Lock()
 		modelStructs_byTableName[tableName] = &modelStruct
-		modelStructs_cacheMutex.Unlock();
+		modelStructs_cacheMutex.Unlock()
 	}
 	return &modelStruct
 }
