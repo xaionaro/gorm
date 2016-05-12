@@ -115,6 +115,9 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 	for i := 0; i < scopeType.NumField(); i++ {
 		if fieldStruct := scopeType.Field(i); ast.IsExported(fieldStruct.Name) {
 			if (fieldStruct.Type.Kind() == reflect.Interface) {
+				if (fieldStruct.Tag.Get("sql") == "-") {
+					continue;
+				}
 				// Interface field
 				value := reflect.ValueOf(scope.Value).Elem()
 				if (value.Kind() == reflect.Slice) {
@@ -188,6 +191,9 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 		if fieldStruct := scopeType.Field(i); ast.IsExported(fieldStruct.Name) {
 			var value reflect.Value
 			if (fieldStruct.Type.Kind() == reflect.Interface) {
+				if (fieldStruct.Tag.Get("sql") == "-") {
+					continue;
+				}
 				value = reflect.ValueOf(scope.Value).Elem()
 				if (value.Kind() == reflect.Slice) {
 					value = value.Index(0)

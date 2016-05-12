@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"reflect"
+	"runtime/debug"
 )
 
 type Scope struct {
@@ -114,11 +115,26 @@ func (scope *Scope) PrimaryField() *Field {
 	if primaryFields := scope.GetModelStruct().PrimaryFields; len(primaryFields) > 0 {
 		if len(primaryFields) > 1 {
 			if field, ok := scope.Fields()["id"]; ok {
+				if (field == nil) {
+					fmt.Printf("field == nil\n")
+					debug.PrintStack()
+					panic(nil)
+				}
 				return field
 			}
 		}
+		if (scope.Fields()[primaryFields[0].DBName] == nil) {
+			fmt.Printf("scope.Fields()<%v>[primaryFields<%v>[0].DBName<%v>] == nil\n", scope.Fields(), primaryFields, primaryFields[0].DBName)
+			debug.PrintStack()
+			//paic(nil)
+		}
 		return scope.Fields()[primaryFields[0].DBName]
 	}
+
+	fmt.Printf("len(primaryFields) == 0\n")
+	/*debug.PrintStack()
+	panic(nil)
+	return &Field{}*/
 	return nil
 }
 
