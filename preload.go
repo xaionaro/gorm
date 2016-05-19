@@ -171,7 +171,15 @@ func (scope *Scope) handleBelongsToPreload(field *Field, conditions []interface{
 	}
 
 	results := makeSlice(field.Struct.Type)
-	associationPrimaryKey := scope.New(results).PrimaryField().Name
+	resultsScope := scope.New(results);
+	if (resultsScope == nil) {
+		panic(fmt.Errorf("resultsScope == nil"));
+	}
+	resultsPrimaryField := resultsScope.PrimaryField();
+	if (resultsPrimaryField == nil) {
+		panic(fmt.Errorf("resultsPrimaryField == nil"));
+	}
+	associationPrimaryKey := resultsPrimaryField.Name
 
 	scope.Err(scope.NewDB().Where(primaryKeys).Find(results, conditions...).Error)
 	resultValues := reflect.Indirect(reflect.ValueOf(results))
