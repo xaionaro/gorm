@@ -548,7 +548,7 @@ func (scope *Scope) autoMigrate() *Scope {
 			if !scope.Dialect().HasColumn(scope, tableName, field.DBName) {
 				if field.IsNormal {
 					sqlTag := scope.generateSqlTag(field)
-					scope.Raw(fmt.Sprintf("ALTER TABLE %v ADD %v %v;", quotedTableName, field.DBName, sqlTag)).Exec()
+					scope.Raw(fmt.Sprintf("ALTER TABLE %v ADD `%v` %v;", quotedTableName, field.DBName, sqlTag)).Exec()
 				}
 			}
 			scope.createJoinTable(field)
