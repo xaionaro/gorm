@@ -13,7 +13,7 @@ type search struct {
 	selects         map[string]interface{}
 	omits           []string
 	orders          []string
-	joins           string
+	joins           []string
 	preload         []searchPreload
 	offset          string
 	limit           string
@@ -98,7 +98,7 @@ func (s *search) Having(query string, values ...interface{}) *search {
 }
 
 func (s *search) Joins(query string) *search {
-	s.joins = query
+	s.joins = append(s.joins, query)
 	return s
 }
 

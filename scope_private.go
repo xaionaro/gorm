@@ -272,7 +272,7 @@ func (scope *Scope) havingSql() string {
 }
 
 func (scope *Scope) joinsSql() string {
-	return scope.Search.joins + " "
+	return strings.Join(scope.Search.joins, " ") + " "
 }
 
 func (scope *Scope) prepareQuerySql() {
