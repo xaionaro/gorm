@@ -77,9 +77,12 @@ func Query(scope *Scope) {
 				}
 			}
 
-			err := scope.Err(rows.Scan(values...))
+			err := rows.Scan(values...)
 			if err != nil {
-				scope.Err(fmt.Errorf("The error (above) was related to this columns: %v", columns))
+				scope.Err(fmt.Errorf("An error related to columns: %v\nvalues: %v\nThe error: %v", columns, values, err.Error()))
+				/*for index, column := range columns {
+					scope.Err(fmt.Errorf("%v", fmt.Sprintln("\t", index ,": value[", column, "] == ", reflect.ValueOf(values[index]).Elem().Interface() )))
+				}*/
 			}
 
 			for index, column := range columns {

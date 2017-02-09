@@ -204,10 +204,14 @@ func (scope *Scope) CallMethod(name string, checkError bool) {
 				f()
 			case func(s *Scope):
 				f(scope)
+			case func(interface{}):
+				f(scope)
 			case func(s *DB):
 				f(scope.NewDB())
 			case func() error:
 				scope.Err(f())
+			case func(interface{}) error:
+				scope.Err(f(scope))
 			case func(s *Scope) error:
 				scope.Err(f(scope))
 			case func(s *DB) error:
