@@ -18,6 +18,9 @@ func fileWithLineNum() string {
 }
 
 func isBlank(value reflect.Value) bool {
+	if !value.IsValid() {
+		return true
+	}
 	return reflect.DeepEqual(value.Interface(), reflect.Zero(value.Type()).Interface())
 }
 
