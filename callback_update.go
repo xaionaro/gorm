@@ -26,8 +26,10 @@ func AssignUpdateAttributes(scope *Scope) {
 
 func BeforeUpdate(scope *Scope) {
 	if _, ok := scope.Get("gorm:update_column"); !ok {
-		scope.CallMethodWithErrorCheck("BeforeSave")
-		scope.CallMethodWithErrorCheck("BeforeUpdate")
+		if _, ok := scope.Get("gorm:dont_call_before_methods"); !ok {
+			scope.CallMethodWithErrorCheck("BeforeSave")
+			scope.CallMethodWithErrorCheck("BeforeUpdate")
+		}
 	}
 }
 
